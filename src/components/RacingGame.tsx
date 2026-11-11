@@ -1003,7 +1003,7 @@ export function RacingGame() {
                   variant="outline"
                   size="sm"
                   className="w-full border-hud-border bg-hud/80 text-foreground hover:bg-secondary text-xs"
-                  onClick={() => setShowDemoModal(true)}
+                  onClick={() => setShowGarage(true)}
                 >
                   <Palette className="size-3.5 mr-1.5 text-primary" />
                   {t.paintCar}

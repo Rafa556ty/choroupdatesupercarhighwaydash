@@ -6,6 +6,7 @@ import revueltoPhoto from "@/assets/revuelto.png";
 import chironPhoto from "@/assets/store/chiron-road.jpg.asset.json";
 import type { PlayerCar } from "@/game/player-cars";
 import { Button } from "@/components/ui/button";
+import { CAR_PARTS, FINISH_LABELS, PALETTE, PART_FINISHES, PART_LABELS, loadCustom, resetPart, saveCustom, setPartColor, setPartFinish, DEFAULT_GARAGE_CUSTOM, type CarPart, type GarageCustom } from "@/game/car-custom";
 
 export type GarageLabels = {
   title: string;
@@ -20,6 +21,30 @@ export function GarageViewer({ labels, onClose, selectedCar, chironOwned, onSele
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [errorMsg, setErrorMsg] = useState("");
+  const [custom, setCustom] = useState<GarageCustom>(DEFAULT_GARAGE_CUSTOM);
+  const [part, setPart] = useState<CarPart>("body");
+  const [tab, setTab] = useState<"color" | "material">("color");
+  const [panelOpen, setPanelOpen] = useState(true);
+  const carRef = useRef<THREE.Object3D | null>(null);
+  const customRef = useRef(custom);
+  customRef.current = custom;
+
+  useEffect(() => { setCustom(loadCustom(localStorage)); }, []);
+  // Repaint the 3D car whenever a choice changes.
+  useEffect(() => {
+    const car = carRef.current;
+    if (!car || status !== "ready") return;
+    void import("@/game/car-paint").then(({ applyCarCustom }) => applyCarCustom(car, selectedCar, custom[selectedCar]));
+  }, [custom, selectedCar, status]);
+
+  const update = (fn: (c: GarageCustom[PlayerCar]) => GarageCustom[PlayerCar]) => {
+    setCustom(prev => {
+      const next = { ...prev, [selectedCar]: fn(prev[selectedCar]) };
+      try { saveCustom(localStorage, next); } catch { /* storage full/blocked: keep in memory */ }
+      return next;
+    });
+  };
+  const current = custom[selectedCar][part];
 
   useEffect(() => {
     setStatus("loading"); setProgress(0);
@@ -38,11 +63,12 @@ export function GarageViewer({ labels, onClose, selectedCar, chironOwned, onSele
       const width = Math.max(1, container.clientWidth);
       const height = Math.max(1, container.clientHeight);
 
+      const lowEnd = navigator.maxTouchPoints > 0 && ((navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 4) <= 4;
       const renderer = new THREE.WebGLRenderer({
-        antialias: true,
+        antialias: !lowEnd,
         powerPreference: "high-performance",
       });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, lowEnd ? 1.25 : 2));
       renderer.setSize(width, height);
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
       renderer.toneMappingExposure = 1.15;
@@ -69,7 +95,7 @@ export function GarageViewer({ labels, onClose, selectedCar, chironOwned, onSele
 
       const keyLight = new THREE.DirectionalLight(0xffffff, 2.4);
       keyLight.castShadow = true;
-      keyLight.shadow.mapSize.set(1024, 1024);
+      keyLight.shadow.mapSize.set(lowEnd ? 512 : 1024, lowEnd ? 512 : 1024);
       keyLight.shadow.camera.near = 1;
       keyLight.shadow.camera.far = 40;
       keyLight.shadow.bias = -0.0006;
@@ -93,6 +119,7 @@ export function GarageViewer({ labels, onClose, selectedCar, chironOwned, onSele
       // Cached model geometry/materials belong to the shared loader, not this view.
       car.traverse(o => { if (o instanceof THREE.Mesh) { o.geometry = o.geometry.clone(); o.material = Array.isArray(o.material) ? o.material.map(m => m.clone()) : o.material.clone(); } });
       setProgress(1);
+      carRef.current = car;
       const pivot = new THREE.Group();
       pivot.add(car);
       scene.add(pivot);
@@ -220,6 +247,7 @@ export function GarageViewer({ labels, onClose, selectedCar, chironOwned, onSele
 
       teardown = () => {
         cancelAnimationFrame(raf);
+        carRef.current = null;
         observer.disconnect();
         controls.removeEventListener("start", onStart);
         controls.removeEventListener("end", onEnd);
@@ -280,6 +308,7 @@ export function GarageViewer({ labels, onClose, selectedCar, chironOwned, onSele
         </Button>
       </div>
 
+      <div className="relative flex min-h-0 flex-1">
       <div ref={containerRef} className="relative min-h-0 flex-1 touch-none">
         {status === "loading" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/95">
@@ -309,6 +338,66 @@ export function GarageViewer({ labels, onClose, selectedCar, chironOwned, onSele
             </Button>
           </div>
         )}
+      </div>
+      {panelOpen ? (
+        <aside aria-label="Personalizar carro" className="garage-panel flex w-64 shrink-0 flex-col gap-3 overflow-y-auto border-l border-hud-border bg-hud p-3 phone-landscape:w-56 phone-landscape:gap-2 phone-landscape:p-2">
+          <div className="flex items-center justify-between">
+            <span className="font-display text-sm tracking-[0.25em] text-primary">PERSONALIZAR</span>
+            <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => setPanelOpen(false)}>OCULTAR</Button>
+          </div>
+          <div role="tablist" className="grid grid-cols-2 gap-1">
+            {(["color", "material"] as const).map(id => (
+              <Button key={id} role="tab" aria-selected={tab === id} variant="outline" size="sm" onClick={() => setTab(id)}
+                className={`h-7 text-[11px] ${tab === id ? "border-primary bg-primary/15 text-primary" : "border-hud-border bg-card"}`}>
+                {id === "color" ? "CORES" : "MATERIAL"}
+              </Button>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 gap-1">
+            {CAR_PARTS.map(p => (
+              <Button key={p} variant="outline" size="sm" aria-pressed={part === p} onClick={() => setPart(p)}
+                className={`h-7 text-[11px] ${part === p ? "border-primary bg-primary/15 text-primary" : "border-hud-border bg-card"}`}>
+                {p === "seats" ? "Interior" : p === "rims" ? "Calotas" : PART_LABELS[p]}
+              </Button>
+            ))}
+          </div>
+          {tab === "color" ? (
+            <div>
+              <div className="grid grid-cols-6 gap-1.5">
+                {PALETTE.map(c => (
+                  <button key={c.color} type="button" title={c.name} aria-label={c.name} aria-pressed={current.color === c.color}
+                    onClick={() => update(cc => setPartColor(cc, part, c.color))}
+                    className={`garage-swatch aspect-square rounded-sm border ${current.color === c.color ? "border-primary ring-2 ring-primary" : "border-hud-border"}`}
+                    style={{ backgroundColor: c.color }} />
+                ))}
+              </div>
+              <label className="mt-2 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                Cor livre
+                <input type="color" aria-label="Escolher cor livre" value={current.color ?? "#808080"}
+                  onChange={e => update(cc => setPartColor(cc, part, e.target.value))}
+                  className="h-7 w-14 cursor-pointer rounded-sm border border-hud-border bg-card" />
+              </label>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-1">
+              {PART_FINISHES[part].map(f => (
+                <Button key={f} variant="outline" size="sm" aria-pressed={current.finish === f}
+                  onClick={() => update(cc => setPartFinish(cc, part, f))}
+                  className={`h-8 text-[11px] ${current.finish === f ? "border-primary bg-primary/15 text-primary" : "border-hud-border bg-card"}`}>
+                  {FINISH_LABELS[f]}
+                </Button>
+              ))}
+            </div>
+          )}
+          <Button variant="ghost" size="sm" className="h-7 text-[11px] text-muted-foreground" onClick={() => update(cc => resetPart(cc, part))}>
+            Restaurar original
+          </Button>
+        </aside>
+      ) : (
+        <Button variant="outline" size="sm" onClick={() => setPanelOpen(true)} className="absolute right-3 top-3 z-10 border-primary bg-hud text-xs text-primary">
+          PERSONALIZAR
+        </Button>
+      )}
       </div>
 
       <div className="flex shrink-0 justify-center gap-3 border-t border-hud-border bg-hud px-3 py-3 phone-landscape:py-1.5">
