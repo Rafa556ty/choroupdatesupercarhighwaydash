@@ -203,6 +203,7 @@ export type RenderSnapshot = {
   baseY: number;
   pz: number;
   dt: number;
+  steer?: number;
   player: { x: number; rot: number; speed: number; w: number; h: number };
   braking: boolean;
   gas: boolean;
@@ -360,6 +361,7 @@ export class RacingEngine {
       player: p,
       braking: this.input.brake && this.phase === "playing",
       gas: this.input.gas && this.phase === "playing",
+      steer: this.steerInput,
       gear: this.currentGear,
       boostActive: this.boostActive,
       exhaustFlame: this.exhaustFlameTimer,
