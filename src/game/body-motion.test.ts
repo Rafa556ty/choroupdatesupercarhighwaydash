@@ -10,7 +10,7 @@ const run = (rot: number, speed: number, braking: boolean, secs: number) => {
 describe("body motion", () => {
   it("leans away from the turn and settles within the roll limit", () => {
     const m = run(0.15, 200, false, 2);
-    expect(m.roll).toBeLessThan(0);
+    expect(m.roll).toBeGreaterThan(0);
     expect(Math.abs(m.roll)).toBeLessThanOrEqual(MAX_ROLL + 1e-6);
     expect(Math.abs(m.rollV)).toBeLessThan(0.01);
   });

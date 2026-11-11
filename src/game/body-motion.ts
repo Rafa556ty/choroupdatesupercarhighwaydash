@@ -13,8 +13,8 @@ export function stepBodyMotion(m: BodyMotion, rot: number, speedKmh: number, bra
   if (h <= 0) return m;
   const accel = (speedKmh - m.lastSpeed) / h; // km/h per s
   const speedF = Math.min(1, speedKmh / 120);
-  // Car leans away from the turn: yaw right (positive rot) rolls the body to the left.
-  const rollTarget = clamp(-rot * ROLL_PER_YAW * speedF, -MAX_ROLL, MAX_ROLL);
+  // Car leans away from the turn: yaw right (positive rot) gives +Z roll, which drops the outer (left) side as seen from the chase camera.
+  const rollTarget = clamp(rot * ROLL_PER_YAW * speedF, -MAX_ROLL, MAX_ROLL);
   // Nose dives under braking, squats under acceleration.
   const pitchTarget = clamp((braking ? -0.022 : 0) + clamp(accel / 60, -1, 1) * 0.008, -MAX_PITCH, MAX_PITCH);
   const rollV = m.rollV + (STIFF * (rollTarget - m.roll) - DAMP * m.rollV) * h;
