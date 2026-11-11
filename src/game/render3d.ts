@@ -1,4 +1,5 @@
-// three.js renderer for the racing game. Browser only: import dynamically.
+// three.js renderer for the racing game. Browser only: import { initialBodyMotion, stepBodyMotion, type BodyMotion } from "./body-motion";
+import dynamically.
 // It never simulates anything; it only draws the RenderSnapshot the engine
 // produces every frame. Sim coordinates are pixels; `ppm` converts to metres.
 // World: player near the origin, forward = -Z, road scenery scrolls with pz.
@@ -364,6 +365,7 @@ export class Scene3D {
   private playerHead: THREE.MeshStandardMaterial[] = [];
   private playerBrakeOnly: THREE.MeshStandardMaterial[] = [];
   private playerWheels: { mesh: THREE.Mesh; radius: number }[] = [];
+  private body: BodyMotion = initialBodyMotion();
   private engineBrakeLight: THREE.Mesh | null = null;
   private rimWarm = new THREE.DirectionalLight(0xffb347, 1.5);
   private rimCool = new THREE.DirectionalLight(0x7fb2ff, 0.8);
@@ -1383,10 +1385,10 @@ export class Scene3D {
         (this.sunShadow.material as THREE.MeshBasicMaterial).opacity = o.strength;
       }
       p.rotation.y = -s.player.rot;
-      // Realistic suspension body roll strictly clamped (never capsizes or rolls onto its roof)
-      p.rotation.z = Math.max(-0.06, Math.min(0.06, s.player.rot * 0.08));
-      // Subtle pitch on braking nose dive
-      p.rotation.x = s.braking ? -0.025 : 0;
+      // Spring-damped chassis: roll away from the turn, nose-dive on braking, squat on accel.
+      this.body = stepBodyMotion(this.body, s.player.rot, s.player.speed, s.braking, dt);
+      p.rotation.z = this.body.roll;
+      p.rotation.x = this.body.pitch;
       // Wheels spin with road speed and lock dead while braking (skid).
       for (const w of this.playerWheels) {
         w.mesh.rotation.x -= wheelOmega(s.player.speed, s.braking, w.radius) * dt;
