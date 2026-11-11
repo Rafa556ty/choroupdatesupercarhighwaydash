@@ -1200,7 +1200,7 @@ export function RacingGame() {
             chironOwned={garage.chironOwned}
             busy={garageBusy}
             onSelect={car => { void selectCar(car); }}
-            onClose={() => setShowGarage(false)}
+            onClose={() => { setShowGarage(false); scene3dRef.current?.refreshCarCustom(); }}
           />
         )}
 
