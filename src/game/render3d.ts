@@ -1,9 +1,9 @@
-// three.js renderer for the racing game. Browser only: import { initialBodyMotion, stepBodyMotion, type BodyMotion } from "./body-motion";
-import dynamically.
+// three.js renderer for the racing game. Browser only: import dynamically.
 // It never simulates anything; it only draws the RenderSnapshot the engine
 // produces every frame. Sim coordinates are pixels; `ppm` converts to metres.
 // World: player near the origin, forward = -Z, road scenery scrolls with pz.
 import * as THREE from "three";
+import { initialBodyMotion, stepBodyMotion, type BodyMotion } from "./body-motion";
 import { contactTexture, loadRoadLighting } from "./road-lighting";
 import { shadowOffset } from "./device-ui";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
