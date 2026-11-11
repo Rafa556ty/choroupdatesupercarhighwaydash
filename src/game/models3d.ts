@@ -585,13 +585,33 @@ const CHIRON_NO_SHADOW_ON_TRACK = /Cabin|Dashboard|Glass|Light|Logo|Grid|Mirror|
  * interior parts are skipped and minor parts stop casting duplicate shadows.
  * The garage keeps the full model.
  */
-export function trimChironForTrack(car: THREE.Object3D) {
+export function trimChironForTrack(car: THREE.Object3D, low = false) {
+  const lite = new Map<THREE.Material, THREE.Material>();
   car.traverse((o) => {
     const m = o as THREE.Mesh;
     if (!m.isMesh || Array.isArray(m.material)) return;
     const name = m.material.name || m.name;
     if (CHIRON_HIDDEN_ON_TRACK.test(name)) m.visible = false;
     if (CHIRON_NO_SHADOW_ON_TRACK.test(name)) m.castShadow = false;
+    if (!low) return;
+    // Phones: the 300k-triangle body would be drawn a second time into the sun
+    // shadow map; the baked contact shadow already grounds it.
+    m.castShadow = false;
+    // Clearcoat/specular lobes double fragment cost; a standard PBR copy looks the
+    // same at race-camera distance. Same mesh, same colours, same textures.
+    const src = m.material;
+    if (src instanceof THREE.MeshPhysicalMaterial) {
+      let next = lite.get(src);
+      if (!next) {
+        const std = new THREE.MeshStandardMaterial();
+        THREE.MeshStandardMaterial.prototype.copy.call(std, src);
+        std.roughness = Math.max(0.12, src.roughness * (1 - 0.35 * src.clearcoat));
+        std.name = src.name;
+        std.forceSinglePass = true;
+        lite.set(src, (next = std));
+      }
+      m.material = next;
+    }
   });
 }
 

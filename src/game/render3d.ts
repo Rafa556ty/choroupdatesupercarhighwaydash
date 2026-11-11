@@ -270,6 +270,10 @@ export class Scene3D {
     const request = ++this.playerLoad;
     const template = await loadCar(key);
     if (this.disposed || request !== this.playerLoad) return;
+    // Compile the new car's shaders off the main thread before swapping, so
+    // selecting a heavy car (Chiron) doesn't freeze the frame.
+    try { await this.renderer.compileAsync(template, this.camera, this.scene); } catch { /* fallback: compile on first draw */ }
+    if (this.disposed || request !== this.playerLoad) return;
     this.player?.removeFromParent();
     this.playerShadow?.removeFromParent(); this.sunShadow?.removeFromParent();
     this.playerTail = []; this.playerHead = []; this.playerBrakeOnly = [];
@@ -281,7 +285,7 @@ export class Scene3D {
   }
 
   private setupChiron(car: THREE.Group) {
-    trimChironForTrack(car);
+    trimChironForTrack(car, this.low);
     const rig = createTrafficLightRig("bugatti", car, 1, false);
     this.chironRig = rig;
     for (const part of rig.all) { part.count = part === rig.wipers ? 2 : 1; car.add(part); }
