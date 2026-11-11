@@ -3,6 +3,8 @@
 // produces every frame. Sim coordinates are pixels; `ppm` converts to metres.
 // World: player near the origin, forward = -Z, road scenery scrolls with pz.
 import * as THREE from "three";
+import { applyCarCustom } from "./car-paint";
+import { loadCustom } from "./car-custom";
 import { initialBodyMotion, stepBodyMotion, type BodyMotion } from "./body-motion";
 import { contactTexture, loadRoadLighting } from "./road-lighting";
 import { shadowOffset } from "./device-ui";
@@ -281,7 +283,16 @@ export class Scene3D {
     this.engineBrakeLight = null; this.wing = undefined; this.chironRig = null;
     this.playerKey = key;
     this.setupPlayer(template.clone(true));
+    this.refreshCarCustom();
     this.canvas.dataset["playerCar"] = key;
+  }
+
+  /** Re-read the garage paint/material choices and apply them to the race car. */
+  refreshCarCustom() {
+    if (!this.player) return;
+    try {
+      applyCarCustom(this.player, this.playerKey, loadCustom(localStorage)[this.playerKey]);
+    } catch (e) { console.warn("car custom", e); }
   }
 
   private setupChiron(car: THREE.Group) {
