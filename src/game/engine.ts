@@ -140,6 +140,9 @@ const BRAKE = 135;
 const COAST = 8;
 const SCROLL = 0.3;
 const STEER_LANES_PER_SEC = 3.5;
+const STEER_RAMP = 3.2;
+const STEER_RETURN = 4.5;
+const STEER_REVERSE = 6;
 const TILE_H = 720;
 const DASH_P = 90;
 
@@ -294,6 +297,7 @@ export class RacingEngine {
   private particles: Particle[] = [];
   private streaks: { x: number; y: number; len: number }[] = [];
   private scroll = 0;
+  private steerInput = 0;
   private shake = 0;
   private rubberT = 0;
   private flash = 0;
@@ -617,20 +621,27 @@ export class RacingEngine {
       this.currentGear = newGear;
       this.lastGear = newGear;
 
-      const steer = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
-      // Realistic speed-sensitive steering: agile at medium speeds, heavy/stable at top speed
-      const speedDamping = 1 - 0.32 * Math.min(1, Math.max(0, (p.speed - 120) / 230));
+      const steerRaw = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
+      // Steering wheel ramps in/out like a real rack instead of snapping (kills the "soap" feel).
+      const rampRate = steerRaw === 0 ? STEER_RETURN : steerRaw * this.steerInput < 0 ? STEER_REVERSE : STEER_RAMP;
+      this.steerInput += clamp(steerRaw - this.steerInput, -rampRate * dt, rampRate * dt);
+      const steer = steerRaw;
+      // Speed-sensitive steering: agile at medium speeds, heavy/stable at top speed
+      const speedDamping = 1 - 0.38 * Math.min(1, Math.max(0, (p.speed - 120) / 230));
       const steerSpeed = this.laneW * (STEER_LANES_PER_SEC * speedDamping);
       const grip = Math.min(1, p.speed / 30);
-      const target = steer * steerSpeed * grip;
-      const steerInertia = p.speed > 200 ? 7.2 : 9.5;
+      const target = this.steerInput * steerSpeed * grip;
+      // Tyres build lateral force progressively: heavier cars respond with more inertia at speed.
+      const steerInertia = p.speed > 200 ? 5.2 : 6.8;
       p.vx += (target - p.vx) * (1 - Math.exp(-steerInertia * dt));
       p.x += p.vx * dt;
 
-      // Realistic vehicle yaw angle following actual lateral momentum vector
+      // Yaw: the nose leads into the turn (steering input) and settles on the travel vector.
       const fwdPx = Math.max(28, (p.speed / 3.6) * this.k);
-      const targetRot = clamp(Math.atan2(p.vx * 1.25, fwdPx), -0.22, 0.22);
-      p.rot += (targetRot - p.rot) * (1 - Math.exp(-12 * dt));
+      const travel = Math.atan2(p.vx, fwdPx);
+      const lead = this.steerInput * 0.035 * grip;
+      const targetRot = clamp(travel + lead, -0.16, 0.16);
+      p.rot += (targetRot - p.rot) * (1 - Math.exp(-7.5 * dt));
 
       // High-speed aggressive lateral tire slip and tire screech
       if (p.speed > 160 && Math.abs(p.vx) > this.laneW * 1.6) {
