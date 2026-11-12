@@ -46,6 +46,7 @@ import { cn } from "@/lib/utils";
 import { GarageViewer } from "@/components/GarageViewer";
 import { DEFAULT_GARAGE, claimChiron, choosePlayerCar, loadGarage, saveGarage, type PlayerCar, type GarageState } from "@/game/player-cars";
 import { CarStore } from '@/components/CarStore';
+import { SpeedCluster } from '@/components/SpeedCluster';
 import { GameAudio } from "@/game/audio";
 import {
   MAX_SPEED,
@@ -542,36 +543,7 @@ export function RacingGame() {
         {(playing || phase === "over") && (
           <div className="pointer-events-none absolute inset-x-0 top-0 z-20 bg-scrim-top px-3 pb-8 pt-[max(env(safe-area-inset-top),10px)]">
             <div className="flex items-start justify-between gap-2">
-              {/* Speedometer & Gear display */}
-              <div className="corner-cut border border-hud-border bg-hud px-3.5 py-1.5 shadow-md">
-                <div className="flex items-baseline gap-2">
-                  <span className="font-display text-4xl sm:text-5xl leading-none tabular-nums text-foreground">
-                    {Math.round(hud.speed)}
-                  </span>
-                  <span className="font-display text-base tracking-widest text-primary">KM/H</span>
-
-                  {/* Real-time Gear Indicator (Requirement 12) */}
-                  <div className="ml-1 flex items-center gap-1 rounded bg-secondary/80 px-2 py-0.5 border border-hud-border">
-                    <span className="text-[10px] font-bold tracking-wider text-muted-foreground">
-                      {t.gear}
-                    </span>
-                    <span className="font-display text-xl font-bold leading-none text-primary">
-                      {hud.gear}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Speed progress bar */}
-                <div className="mt-1.5 h-1 w-28 sm:w-32 bg-secondary/60 rounded-full overflow-hidden">
-                  <div
-                    className={cn(
-                      "h-full transition-[width] duration-100",
-                      speedPct > 0.85 ? "bg-brake" : "bg-primary",
-                    )}
-                    style={{ width: `${speedPct * 100}%` }}
-                  />
-                </div>
-              </div>
+              <SpeedCluster car={garage.selectedCar} speed={hud.speed} gear={hud.gear} />
 
               {/* Distance, Record & Audio Mute */}
               <div className="flex items-start gap-2">
