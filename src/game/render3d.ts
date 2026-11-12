@@ -896,8 +896,28 @@ export class Scene3D {
           .catch((e) => console.error(`model ${k} failed`, e)),
       ),
     );
-    await this.renderer.compileAsync(this.scene, this.camera);
+    await this.precompileAll();
     this.canvas.dataset["modelsReady"] = "true";
+  }
+
+  /** Compile shaders for hidden objects too (tunnel, police, smoke) so they don't freeze the game the first time they appear. */
+  private async precompileAll() {
+    const hidden: THREE.Object3D[] = [];
+    this.scene.traverse((o) => { if (!o.visible) { hidden.push(o); o.visible = true; } });
+    const env = this.scene.environment;
+    try {
+      await this.renderer.compileAsync(this.scene, this.camera);
+      if (this.reflectionMaps) {
+        this.scene.environment = this.reflectionMaps.tunnel.texture;
+        await this.renderer.compileAsync(this.scene, this.camera);
+        this.scene.environment = this.reflectionMaps.night.texture;
+        await this.renderer.compileAsync(this.scene, this.camera);
+      }
+    } catch { /* compile on first draw */ }
+    finally {
+      this.scene.environment = env;
+      for (const o of hidden) o.visible = false;
+    }
   }
 
   private setupPlayer(car: THREE.Group) {

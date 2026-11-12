@@ -585,7 +585,7 @@ export function RacingGame() {
 
             {/* Police Pursuit Minimalist Status Gauge (Requirement 6) */}
             {mode === "police" && hud.policeGap !== undefined && (
-              <div className="mt-2.5 mx-auto max-w-[320px] corner-cut border border-hud-border bg-hud/90 px-3 py-1.5 shadow-lg">
+              <div className="pointer-events-none fixed inset-x-0 top-1 z-30 mx-auto max-w-[320px] corner-cut border border-hud-border bg-hud/90 px-3 py-1.5 shadow-lg">
                 <div className="flex items-center justify-between text-[11px] font-bold tracking-wider">
                   <div className="flex items-center gap-1.5 text-foreground">
                     <ShieldAlert className="size-3.5 text-rose-500 animate-pulse" />
@@ -615,7 +615,7 @@ export function RacingGame() {
 
             {/* Near-miss event popup with energetic badge and combo */}
             {playing && hud.nearMissEvent && (
-              <div className="mt-2 flex justify-center animate-rise-in pointer-events-none">
+              <div className={cn("pointer-events-none fixed inset-x-0 z-30 flex justify-center animate-rise-in", mode === "police" ? "top-14" : "top-1")}>
                 <div className="corner-cut flex items-center gap-2.5 border-2 border-primary/70 bg-black/85 backdrop-blur-xs px-4 py-1.5 shadow-glow">
                   <Flame className="size-5 text-primary animate-pulse" />
                   <div className="flex flex-col items-center">
